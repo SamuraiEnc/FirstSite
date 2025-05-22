@@ -1,1 +1,324 @@
-<p>Hello world!</p>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>💰 Clicker Game</title>
+    <style>
+        :root {
+            --primary: #f8d347;
+            --secondary: #f5b301;
+            --dark: #1a1a1a;
+            --light: #ffffff;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: var(--dark);
+            color: var(--light);
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            overflow: hidden;
+        }
+
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            color: var(--primary);
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px rgba(248, 211, 71, 0.5);
+        }
+
+        .coin {
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, var(--primary), var(--secondary));
+            border-radius: 50%;
+            margin: 30px auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--dark);
+            cursor: pointer;
+            box-shadow: 0 0 30px rgba(248, 211, 71, 0.7);
+            transition: transform 0.1s;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .coin:active {
+            transform: scale(0.95);
+        }
+
+        .coin::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle, transparent 60%, rgba(255,255,255,0.3) 70%);
+            border-radius: 50%;
+        }
+
+        .stats {
+            background-color: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+
+        .coins-count {
+            font-size: 32px;
+            font-weight: bold;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        .cps {
+            color: #aaa;
+            font-size: 14px;
+        }
+
+        .upgrades {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 30px;
+        }
+
+        .upgrade {
+            background-color: rgba(0,0,0,0.5);
+            border: 1px solid var(--primary);
+            border-radius: 8px;
+            padding: 10px;
+            width: 120px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .upgrade:hover {
+            background-color: rgba(248, 211, 71, 0.1);
+        }
+
+        .upgrade:active {
+            transform: scale(0.98);
+        }
+
+        .upgrade-name {
+            color: var(--primary);
+            font-weight: bold;
+        }
+
+        .upgrade-cost {
+            color: #aaa;
+            font-size: 12px;
+            margin: 5px 0;
+        }
+
+        .upgrade-cps {
+            color: #4CAF50;
+            font-size: 12px;
+        }
+
+        .particle {
+            position: absolute;
+            background-color: var(--primary);
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        @media (max-width: 500px) {
+            .coin {
+                width: 150px;
+                height: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Coin Clicker</h1>
+        <div class="coin" id="coin">CLICK</div>
+        
+        <div class="stats">
+            <div class="coins-count" id="coins">0</div>
+            <div class="cps" id="cps">0 монет/сек</div>
+        </div>
+        
+        <div class="upgrades" id="upgrades">
+            <!-- Улучшения будут добавляться здесь -->
+        </div>
+    </div>
+
+    <script>
+        // Игровые переменные
+        let coins = 0;
+        let coinsPerSecond = 0;
+        let clickPower = 1;
+        let upgrades = [
+            { id: 1, name: "Автокликер", cost: 10, cps: 0.1, owned: 0 },
+            { id: 2, name: "Улучшенный клик", cost: 50, power: 1, owned: 0 },
+            { id: 3, name: "Ферма", cost: 200, cps: 1, owned: 0 },
+            { id: 4, name: "Фабрика", cost: 1000, cps: 5, owned: 0 },
+            { id: 5, name: "Завод", cost: 5000, cps: 10, owned: 0 }
+        ];
+
+        // Элементы DOM
+        const coinElement = document.getElementById('coin');
+        const coinsElement = document.getElementById('coins');
+        const cpsElement = document.getElementById('cps');
+        const upgradesElement = document.getElementById('upgrades');
+
+        // Загрузка сохранения
+        function loadGame() {
+            const savedGame = localStorage.getItem('coinClickerSave');
+            if (savedGame) {
+                const gameData = JSON.parse(savedGame);
+                coins = gameData.coins || 0;
+                coinsPerSecond = gameData.coinsPerSecond || 0;
+                clickPower = gameData.clickPower || 1;
+                upgrades = gameData.upgrades || upgrades;
+            }
+            updateUI();
+            renderUpgrades();
+        }
+
+        // Сохранение игры
+        function saveGame() {
+            const gameData = {
+                coins,
+                coinsPerSecond,
+                clickPower,
+                upgrades
+            };
+            localStorage.setItem('coinClickerSave', JSON.stringify(gameData));
+        }
+
+        // Клик по монете
+        function handleClick() {
+            coins += clickPower;
+            updateUI();
+            createParticles();
+            saveGame();
+        }
+
+        // Создание частиц при клике
+        function createParticles() {
+            const rect = coinElement.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            
+            for (let i = 0; i < 5; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                
+                const size = Math.random() * 10 + 5;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * 50 + 30;
+                const x = centerX + Math.cos(angle) * distance;
+                const y = centerY + Math.sin(angle) * distance;
+                
+                particle.style.left = `${x}px`;
+                particle.style.top = `${y}px`;
+                
+                document.body.appendChild(particle);
+                
+                // Анимация частицы
+                setTimeout(() => {
+                    particle.style.transform = `translate(${Math.random() * 100 - 50}px, ${Math.random() * 100 - 50}px)`;
+                    particle.style.opacity = '0';
+                    particle.style.transition = 'all 0.5s ease-out';
+                    
+                    // Удаление частицы после анимации
+                    setTimeout(() => {
+                        particle.remove();
+                    }, 500);
+                }, 10);
+            }
+        }
+
+        // Покупка улучшения
+        function buyUpgrade(upgradeId) {
+            const upgrade = upgrades.find(u => u.id === upgradeId);
+            
+            if (coins >= upgrade.cost) {
+                coins -= upgrade.cost;
+                upgrade.owned++;
+                
+                if (upgrade.cps) {
+                    coinsPerSecond += upgrade.cps;
+                }
+                
+                if (upgrade.power) {
+                    clickPower += upgrade.power;
+                }
+                
+                // Увеличиваем стоимость улучшения
+                upgrade.cost = Math.floor(upgrade.cost * 1.5);
+                
+                updateUI();
+                renderUpgrades();
+                saveGame();
+            } else {
+                alert('Недостаточно монет!');
+            }
+        }
+
+        // Обновление интерфейса
+        function updateUI() {
+            coinsElement.textContent = Math.floor(coins);
+            cpsElement.textContent = `${coinsPerSecond.toFixed(1)} монет/сек`;
+        }
+
+        // Отрисовка улучшений
+        function renderUpgrades() {
+            upgradesElement.innerHTML = '';
+            
+            upgrades.forEach(upgrade => {
+                const upgradeElement = document.createElement('div');
+                upgradeElement.className = 'upgrade';
+                upgradeElement.innerHTML = `
+                    <div class="upgrade-name">${upgrade.name}</div>
+                    <div class="upgrade-cost">Цена: ${Math.floor(upgrade.cost)}</div>
+                    <div class="upgrade-cps">${
+                        upgrade.cps ? `+${upgrade.cps} монет/сек` : `+${upgrade.power} к клику`
+                    }</div>
+                    <div>Куплено: ${upgrade.owned}</div>
+                `;
+                
+                upgradeElement.addEventListener('click', () => buyUpgrade(upgrade.id));
+                upgradesElement.appendChild(upgradeElement);
+            });
+        }
+
+        // Игровой цикл (пассивный доход)
+        function gameLoop() {
+            coins += coinsPerSecond / 10; // 10 раз в секунду
+            updateUI();
+            saveGame();
+        }
+
+        // Инициализация игры
+        function initGame() {
+            coinElement.addEventListener('click', handleClick);
+            loadGame();
+            setInterval(gameLoop, 100); // 10 раз в секунду
+        }
+
+        // Запуск игры
+        initGame();
+    </script>
+</body>
+</html>
